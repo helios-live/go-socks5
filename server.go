@@ -10,8 +10,8 @@ import (
 
 	dbg "runtime/debug"
 
-	"github.com/alex-eftimie/netutils"
-	"github.com/alex-eftimie/utils"
+	"github.com/ideatocode/go-netutils"
+	"github.com/ideatocode/go-utils"
 )
 
 // Status is used to send Replies to socks client

@@ -6,8 +6,8 @@ import (
 	"io"
 	"net"
 
-	"github.com/alex-eftimie/utils"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ideatocode/go-utils"
 )
 
 // RequestHeader holds the header of the socks5 connection request

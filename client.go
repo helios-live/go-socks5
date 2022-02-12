@@ -8,8 +8,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/alex-eftimie/netutils"
-	"github.com/alex-eftimie/utils"
+	"github.com/ideatocode/go-netutils"
+	"github.com/ideatocode/go-utils"
 )
 
 // Client is the Socks5Proxy client
