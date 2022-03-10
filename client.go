@@ -7,20 +7,19 @@ import (
 	"net"
 	"time"
 
-	"github.com/ideatocode/go-netutils"
-	"github.com/ideatocode/go-utils"
+	"github.com/ideatocode/go/debugging"
+	"github.com/ideatocode/go/netplus"
 )
 
 // Client is the Socks5Proxy client
 type Client struct {
 	// AuthType      string
 	// Addr          string
-	// AuthHandler   func(uinfo *netutils.UserInfo, ip string) bool
-	// TunnelHandler func(uinfo *netutils.UserInfo, ip string, c net.Conn, upstreamHost string, upstreamPort int, sc StatusCallback)
 	Timeout time.Duration
-	Auth    *netutils.UserInfo
+	Auth    *UserPass
 	// Conn if is set, the socks uses that connection instead of dialing itself
-	Conn net.Conn
+	Conn     net.Conn
+	DumpData bool
 }
 
 // SocksClientConn is a wrapper for net.Conn
@@ -44,10 +43,10 @@ func (c *Client) Open(addr string) (cc *SocksClientConn, err error) {
 	conn := c.Conn
 	c.Conn.SetDeadline(time.Now().Add(c.Timeout))
 
-	if utils.DebugLevel > 9999 {
-		conn = &netutils.PrinterConn{Conn: conn, Prefix: "(socksclient):"}
+	if c.DumpData {
+		conn = &debugging.PrinterConn{Conn: conn, Prefix: "(socksclient):"}
 	}
-	conn = &netutils.CounterConn{Conn: conn}
+	conn = &netplus.CounterConn{Conn: conn}
 
 	err = c.performHandshake(conn)
 	if err != nil {
@@ -99,10 +98,8 @@ func (cc *SocksClientConn) Connect(addr string, port int) error {
 
 func (c *Client) performHandshake(conn net.Conn) (err error) {
 	if c.Auth == nil {
-		utils.Debugf(9999, "[Socks5]performHandshake noAuth")
 		_, err = conn.Write([]byte{0x05, 0x01, 0x00})
 	} else {
-		utils.Debugf(9999, "[Socks5]performHandshake passAuth: %s:%s", c.Auth.User, c.Auth.Pass)
 		_, err = conn.Write([]byte{0x05, 0x02, 0x00, 0x02})
 	}
 	if err != nil {

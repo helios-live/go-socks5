@@ -11,8 +11,9 @@ import (
 
 	dbg "runtime/debug"
 
-	"github.com/ideatocode/go-netutils"
-	"github.com/ideatocode/go-utils"
+	"github.com/ideatocode/go/debugging"
+	"github.com/ideatocode/go/log"
+	"github.com/ideatocode/go/netplus"
 )
 
 // 2.0.0
@@ -67,13 +68,21 @@ type socksConn struct {
 	isClosed bool
 }
 
+// UserPass is the user and password the client used to authenticate
+type UserPass struct {
+	User string
+	Pass string
+}
+
 // Server is the Socks5Proxy server
 type Server struct {
 	Addr          string
-	AuthHandler   func(ctx context.Context, uinfo *netutils.UserInfo, ip string) bool
-	TunnelHandler func(ctx context.Context, uinfo *netutils.UserInfo, ip string, c net.Conn, upstreamHost string, upstreamPort int, sc StatusCallback)
+	AuthHandler   func(ctx context.Context, uinfo UserPass, ip string) bool
+	TunnelHandler func(ctx context.Context, uinfo UserPass, ip string, c net.Conn, upstreamHost string, upstreamPort int, sc StatusCallback)
 	Timeout       time.Duration
 	listener      net.Listener
+	Logger        log.Logger
+	DumpData      bool
 }
 
 func (s socksConn) Close() error {
@@ -94,13 +103,13 @@ func (ss *Server) ListenAndServe() error {
 }
 
 // Listen listens on an address
-func (ss *Server) Listen(addr string) (*netutils.CounterListener, error) {
+func (ss *Server) Listen(addr string) (*netplus.CounterListener, error) {
 
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	cl := netutils.CounterListener{Listener: l}
+	cl := netplus.CounterListener{Listener: l}
 	return &cl, nil
 }
 
@@ -108,7 +117,7 @@ func (ss *Server) Listen(addr string) (*netutils.CounterListener, error) {
 func (ss *Server) Serve(list net.Listener) error {
 
 	ss.listener = list
-	utils.Debug(999, "[Socks]Listening on", list.Addr())
+	ss.Logger.Debug("[Socks]Listening on", list.Addr())
 
 	for {
 		rw, err := list.Accept()
@@ -116,13 +125,13 @@ func (ss *Server) Serve(list net.Listener) error {
 		if err != nil {
 			return err
 		}
-		utils.Debug(999, "[Socks]New connection from", rw.RemoteAddr(), "to", ss.listener.Addr())
+		ss.Logger.Debug("[Socks]New connection from", rw.RemoteAddr(), "to", ss.listener.Addr())
 
 		sc := socksConn{rw, false}
-		cc := &netutils.CounterConn{Conn: sc, Upstream: 0, Downstream: 0}
-		if utils.DebugLevel >= 9999 {
-			cp := &netutils.PrinterConn{Conn: sc}
-			cc = &netutils.CounterConn{Conn: cp, Upstream: 0, Downstream: 0}
+		cc := &netplus.CounterConn{Conn: sc, Upstream: 0, Downstream: 0}
+		if ss.DumpData {
+			cp := &debugging.PrinterConn{Conn: sc}
+			cc = &netplus.CounterConn{Conn: cp, Upstream: 0, Downstream: 0}
 		}
 		ctx := context.Background()
 		go ss.serve(ctx, cc)
@@ -151,13 +160,13 @@ func (ss *Server) serve(ctx context.Context, c net.Conn) {
 
 	uinfo, ip, err := ss.performHandshake(ctx, c)
 	if err != nil {
-		utils.Debug(999, err)
+		ss.Logger.Debug("[Socks] handshake error:", err)
 		return
 	}
 
 	rh, err := readReqHeader(c, true)
 	if rh == nil || err != nil {
-		utils.Debug(999, fmt.Sprintf("[Socks](%s) e: Failed to ReadReqHeader, %s", ss.Addr, err))
+		ss.Logger.Debug(fmt.Sprintf("[Socks](%s) e: Failed to ReadReqHeader, %s", ss.Addr, err))
 		c.Close()
 		return
 	}
@@ -165,7 +174,7 @@ func (ss *Server) serve(ctx context.Context, c net.Conn) {
 	c.SetDeadline(time.Time{}) // remove the deadline
 
 	if ss.TunnelHandler != nil {
-		ss.TunnelHandler(ctx, uinfo, ip, c, rh.Addr, rh.Port, func(domain string, st Status) {
+		ss.TunnelHandler(ctx, *uinfo, ip, c, rh.Addr, rh.Port, func(domain string, st Status) {
 			c.Write(customError(domain, st))
 			if byte(st) != byte(StatusSucceeded) {
 				c.Close()
@@ -180,7 +189,7 @@ func (ss *Server) serve(ctx context.Context, c net.Conn) {
 		defer cancel()
 
 		if err != nil {
-			utils.Debug(999, fmt.Sprintf("[Socks](%s) e: Failed to Dial %s, %s", ss.Addr, addr, err))
+			ss.Logger.Debug(fmt.Sprintf("[Socks](%s) e: Failed to Dial %s, %s", ss.Addr, addr, err))
 			c.Write(statusHostUnreachable)
 			return
 		}
@@ -191,7 +200,7 @@ func (ss *Server) serve(ctx context.Context, c net.Conn) {
 	c.Close()
 }
 
-func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *netutils.UserInfo, ip string, err error) {
+func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *UserPass, ip string, err error) {
 
 	// read socks ver
 	b1 := make([]byte, 1)
@@ -243,7 +252,7 @@ func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *netu
 
 	ip = strings.Split(c.RemoteAddr().String(), ":")[0]
 	if ss.AuthHandler != nil {
-		ok := ss.AuthHandler(ctx, uinfo, ip)
+		ok := ss.AuthHandler(ctx, *uinfo, ip)
 		if !ok {
 			c.Write([]byte{0x05, 0xff})
 			c.Close()
@@ -255,8 +264,7 @@ func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *netu
 	return uinfo, ip, nil
 }
 
-func getSocksPassAuth(c net.Conn) (*netutils.UserInfo, error) {
-	defer utils.Debug(9999, "[Socks]", "Read pass auth done")
+func getSocksPassAuth(c net.Conn) (*UserPass, error) {
 	h1 := make([]byte, 2)
 	n, err := c.Read(h1)
 	if n != 2 || err != nil {
@@ -281,7 +289,7 @@ func getSocksPassAuth(c net.Conn) (*netutils.UserInfo, error) {
 	if n != int(plen[0]) || err != nil {
 		return nil, err
 	}
-	return &netutils.UserInfo{
+	return &UserPass{
 		User: string(uname),
 		Pass: string(passwd),
 	}, nil

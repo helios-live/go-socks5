@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-
-	"github.com/davecgh/go-spew/spew"
-	"github.com/ideatocode/go-utils"
 )
 
 // RequestHeader holds the header of the socks5 connection request
@@ -70,17 +67,14 @@ func (h *requestBinHeader) WriteTo(w io.Writer) (int64, error) {
 func readReqHeader(c net.Conn, outgoing bool) (*RequestHeader, error) {
 	rh := RequestHeader{}
 
-	utils.Debug(9999, "[Socks] reading header, o:", outgoing)
 	h1 := make([]byte, 4)
 	n, err := c.Read(h1)
 	if n != 4 || err != nil {
-		utils.Debug(9999, "[Socks] partial header", spew.Sdump(n, h1))
 		return nil, err
 	}
 	cmd := h1[1]
 	rh.Bin.ver = h1[0]
 	rh.Bin.cmd = h1[1]
-	utils.Debug(9999, "[Socks]", "cmd", int(cmd))
 
 	atyp := h1[3]
 	rh.Bin.atyp = h1[3]
@@ -125,7 +119,7 @@ func readReqHeader(c net.Conn, outgoing bool) (*RequestHeader, error) {
 		rh.Bin.addr = &bn
 		addr = b.String()
 	}
-	utils.Debug(9999, "[Socks]", "addr", atyp, addr)
+
 	portb := make([]byte, 2)
 	rh.Bin.port = portb
 	n, err = c.Read(portb)
@@ -135,7 +129,7 @@ func readReqHeader(c net.Conn, outgoing bool) (*RequestHeader, error) {
 	port := binary.BigEndian.Uint16(portb)
 	rh.Addr = addr
 	rh.Port = int(port)
-	utils.Debug(9999, "[Socks]", "port", port)
+
 	// only connect allowed
 	if outgoing && cmd != 0x01 {
 		return nil, fmt.Errorf("Only Connect: %X, %s:%d", cmd, addr, rh.Port)
