@@ -1,6 +1,7 @@
 package socks5
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -67,8 +68,8 @@ type socksConn struct {
 // Server is the Socks5Proxy server
 type Server struct {
 	Addr          string
-	AuthHandler   func(uinfo *netutils.UserInfo, ip string) bool
-	TunnelHandler func(uinfo *netutils.UserInfo, ip string, c net.Conn, upstreamHost string, upstreamPort int, sc StatusCallback)
+	AuthHandler   func(ctx context.Context, uinfo *netutils.UserInfo, ip string) bool
+	TunnelHandler func(ctx context.Context, uinfo *netutils.UserInfo, ip string, c net.Conn, upstreamHost string, upstreamPort int, sc StatusCallback)
 	Timeout       time.Duration
 	listener      net.Listener
 }
@@ -121,7 +122,8 @@ func (ss *Server) Serve(list net.Listener) error {
 			cp := &netutils.PrinterConn{Conn: sc}
 			cc = &netutils.CounterConn{Conn: cp, Upstream: 0, Downstream: 0}
 		}
-		go ss.serve(cc)
+		ctx := context.Background()
+		go ss.serve(ctx, cc)
 	}
 }
 
@@ -133,7 +135,11 @@ func (ss *Server) Close() {
 	}
 }
 
-func (ss *Server) serve(c net.Conn) {
+func (ss *Server) serve(ctx context.Context, c net.Conn) {
+
+	// set a deadline
+	c.SetDeadline(time.Now().Add(ss.Timeout))
+
 	defer func() {
 		if r := recover(); r != nil {
 			dbg.PrintStack()
@@ -141,7 +147,7 @@ func (ss *Server) serve(c net.Conn) {
 		}
 	}()
 
-	uinfo, ip, err := ss.performHandshake(c)
+	uinfo, ip, err := ss.performHandshake(ctx, c)
 	if err != nil {
 		utils.Debug(999, err)
 		return
@@ -154,8 +160,10 @@ func (ss *Server) serve(c net.Conn) {
 		return
 	}
 
+	c.SetDeadline(time.Time{}) // remove the deadline
+
 	if ss.TunnelHandler != nil {
-		ss.TunnelHandler(uinfo, ip, c, rh.Addr, rh.Port, func(domain string, st Status) {
+		ss.TunnelHandler(ctx, uinfo, ip, c, rh.Addr, rh.Port, func(domain string, st Status) {
 			c.Write(customError(domain, st))
 			if byte(st) != byte(StatusSucceeded) {
 				c.Close()
@@ -163,7 +171,12 @@ func (ss *Server) serve(c net.Conn) {
 		})
 	} else {
 		addr := net.JoinHostPort(rh.Addr, fmt.Sprintf("%d", rh.Port))
-		dc, err := net.DialTimeout("tcp", addr, ss.Timeout)
+		// dc, err := net.DialTimeout("tcp", addr, ss.Timeout)
+		var d net.Dialer
+		dialctx, cancel := context.WithTimeout(ctx, ss.Timeout)
+		dc, err := d.DialContext(dialctx, "tcp", addr)
+		defer cancel()
+
 		if err != nil {
 			utils.Debug(999, fmt.Sprintf("[Socks](%s) e: Failed to Dial %s, %s", ss.Addr, addr, err))
 			c.Write(statusHostUnreachable)
@@ -176,7 +189,7 @@ func (ss *Server) serve(c net.Conn) {
 	c.Close()
 }
 
-func (ss *Server) performHandshake(c net.Conn) (uinfo *netutils.UserInfo, ip string, err error) {
+func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *netutils.UserInfo, ip string, err error) {
 
 	// read socks ver
 	b1 := make([]byte, 1)
@@ -228,7 +241,7 @@ func (ss *Server) performHandshake(c net.Conn) (uinfo *netutils.UserInfo, ip str
 
 	ip = strings.Split(c.RemoteAddr().String(), ":")[0]
 	if ss.AuthHandler != nil {
-		ok := ss.AuthHandler(uinfo, ip)
+		ok := ss.AuthHandler(ctx, uinfo, ip)
 		if !ok {
 			c.Write([]byte{0x05, 0xff})
 			c.Close()

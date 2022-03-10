@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"time"
 
@@ -31,27 +30,20 @@ type SocksClientConn struct {
 }
 
 // Close closes the socks5clientConn only once
-func (s *SocksClientConn) Close() error {
-	if s.isClosed {
+func (cc *SocksClientConn) Close() error {
+	if cc.isClosed {
 		return nil
 	}
-	s.isClosed = true
-	return s.Conn.Close()
+	cc.isClosed = true
+	return cc.Conn.Close()
 }
 
 // Open opens a Socks5 tunnel to addr
-func (c *Client) Open(addr string) (sc *SocksClientConn, err error) {
-	var conn net.Conn
+func (c *Client) Open(addr string) (cc *SocksClientConn, err error) {
 
-	if c.Conn != nil {
-		conn = c.Conn
-	} else {
-		log.Fatalln("re-dial?")
-		conn, err = net.DialTimeout("tcp", addr, c.Timeout)
-		if err != nil {
-			return nil, err
-		}
-	}
+	conn := c.Conn
+	c.Conn.SetDeadline(time.Now().Add(c.Timeout))
+
 	if utils.DebugLevel > 9999 {
 		conn = &netutils.PrinterConn{Conn: conn, Prefix: "(socksclient):"}
 	}
@@ -61,11 +53,12 @@ func (c *Client) Open(addr string) (sc *SocksClientConn, err error) {
 	if err != nil {
 		return nil, err
 	}
+	c.Conn.SetDeadline(time.Time{})
 	return &SocksClientConn{Conn: conn}, err
 }
 
 // Connect sends the connection request
-func (c *SocksClientConn) Connect(addr string, port int) error {
+func (cc *SocksClientConn) Connect(addr string, port int) error {
 	var atyp byte
 	var addrb []byte
 	ip := net.ParseIP(addr)
@@ -89,16 +82,16 @@ func (c *SocksClientConn) Connect(addr string, port int) error {
 		addr: &addrb,
 		port: portb,
 	}
-	_, err := x.WriteTo(c)
+	_, err := x.WriteTo(cc)
 	if err != nil {
-		c.Close()
+		cc.Close()
 		return err
 	}
 
 	// read response status
-	_, err = readReqHeader(c, false)
+	_, err = readReqHeader(cc, false)
 	if err != nil {
-		c.Close()
+		cc.Close()
 		return err
 	}
 	return nil
