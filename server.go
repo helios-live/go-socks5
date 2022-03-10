@@ -15,6 +15,8 @@ import (
 	"github.com/ideatocode/go-utils"
 )
 
+// 2.0.0
+
 // Status is used to send Replies to socks client
 type Status byte
 
