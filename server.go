@@ -244,7 +244,7 @@ func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *User
 		c.Write([]byte{0x05, 0x02})
 		uinfo, err = getSocksPassAuth(c)
 		if uinfo == nil || err != nil {
-			c.Write([]byte{0x05, 0xff})
+			c.Write([]byte{0x01, 0xff})
 			c.Close()
 			return nil, "", fmt.Errorf("[Socks](%s) e: Failed to get authentication: %s", ss.Addr, err)
 		}
@@ -252,19 +252,20 @@ func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *User
 
 	ip = strings.Split(c.RemoteAddr().String(), ":")[0]
 	if ss.AuthHandler != nil {
-		ok := ss.AuthHandler(ctx, *uinfo, ip)
-		if !ok {
+		allowed := ss.AuthHandler(ctx, *uinfo, ip)
+		if !allowed {
 			c.Write([]byte{0x05, 0xff})
 			c.Close()
-			return uinfo, ip, fmt.Errorf("[Socks](%s) e: Failed to get authentication: %s", ss.Addr, err)
+			return uinfo, ip, fmt.Errorf("[Socks](%s) e: refused by authhandler: %s", ss.Addr, err)
 		}
 	}
 	// write success
-	c.Write([]byte{0x05, 0x00})
+	c.Write([]byte{0x01, 0x00})
 	return uinfo, ip, nil
 }
 
 func getSocksPassAuth(c net.Conn) (*UserPass, error) {
+
 	h1 := make([]byte, 2)
 	n, err := c.Read(h1)
 	if n != 2 || err != nil {
