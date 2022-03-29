@@ -7,8 +7,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/ideatocode/go/debugging"
 	"github.com/ideatocode/go/netplus"
+	"go.ideatocode.tech/debug"
 )
 
 // Client is the Socks5Proxy client
@@ -44,7 +44,7 @@ func (c *Client) Open(addr string) (cc *SocksClientConn, err error) {
 	c.Conn.SetDeadline(time.Now().Add(c.Timeout))
 
 	if c.DumpData {
-		conn = &debugging.PrinterConn{Conn: conn, Prefix: "(socksclient):"}
+		conn = &debug.PrinterConn{Conn: conn, Prefix: "(socksclient):"}
 	}
 	conn = &netplus.CounterConn{Conn: conn}
 

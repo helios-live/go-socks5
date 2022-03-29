@@ -11,9 +11,9 @@ import (
 
 	dbg "runtime/debug"
 
-	"github.com/ideatocode/go/debugging"
 	"github.com/ideatocode/go/log"
 	"github.com/ideatocode/go/netplus"
+	"go.ideatocode.tech/debug"
 )
 
 // 2.0.0
@@ -130,7 +130,7 @@ func (ss *Server) Serve(list net.Listener) error {
 		sc := socksConn{rw, false}
 		cc := &netplus.CounterConn{Conn: sc, Upstream: 0, Downstream: 0}
 		if ss.DumpData {
-			cp := &debugging.PrinterConn{Conn: sc}
+			cp := &debug.PrinterConn{Conn: sc}
 			cc = &netplus.CounterConn{Conn: cp, Upstream: 0, Downstream: 0}
 		}
 		ctx := context.Background()
