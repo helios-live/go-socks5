@@ -1,4 +1,4 @@
-package socks5
+package socks5 // import go.ideatocode.tech/socks5
 
 import (
 	"encoding/binary"
