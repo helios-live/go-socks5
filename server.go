@@ -11,9 +11,9 @@ import (
 
 	dbg "runtime/debug"
 
-	"github.com/ideatocode/go/log"
 	"github.com/ideatocode/go/netplus"
 	"go.ideatocode.tech/debug"
+	"go.ideatocode.tech/log"
 )
 
 // 2.0.0

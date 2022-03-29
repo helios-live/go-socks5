@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ideatocode/go-socks5"
+	"github.com/ideatocode/go-socks5/v2"
 	"github.com/ideatocode/go/netplus"
 	"github.com/stretchr/testify/assert"
 	"go.ideatocode.tech/log"
