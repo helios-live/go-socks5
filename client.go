@@ -7,8 +7,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/ideatocode/go/netplus"
 	"go.ideatocode.tech/debug"
+	"go.ideatocode.tech/netplus"
 )
 
 // Client is the Socks5Proxy client

@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/ideatocode/go-socks5/v2"
-	"github.com/ideatocode/go/netplus"
 	"github.com/stretchr/testify/assert"
 	"go.ideatocode.tech/log"
+	"go.ideatocode.tech/netplus"
 	gproxy "golang.org/x/net/proxy"
 )
 

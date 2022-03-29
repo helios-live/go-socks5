@@ -3,17 +3,16 @@ module github.com/ideatocode/go-socks5/v2
 go 1.17
 
 require (
-	github.com/ideatocode/go/netplus v0.0.0-20220310050018-e005b4104963
 	github.com/stretchr/testify v1.7.1
 	go.ideatocode.tech/debug v1.0.3
 	go.ideatocode.tech/log v1.0.4
+	go.ideatocode.tech/netplus v1.0.0
 	golang.org/x/net v0.0.0-20220325170049-de3da57026de
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
-	github.com/ideatocode/go/log v0.0.0-20220310051631-0da0f519ece7 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
