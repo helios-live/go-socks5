@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ideatocode/go-socks5/v2"
 	"github.com/stretchr/testify/assert"
 	"go.ideatocode.tech/log"
 	"go.ideatocode.tech/netplus"
+	"go.ideatocode.tech/socks5"
 	gproxy "golang.org/x/net/proxy"
 )
 

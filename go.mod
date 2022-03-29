@@ -1,4 +1,4 @@
-module github.com/ideatocode/go-socks5/v2
+module go.ideatocode.tech/socks5
 
 go 1.17
 
