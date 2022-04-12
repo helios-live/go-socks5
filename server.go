@@ -11,6 +11,7 @@ import (
 
 	dbg "runtime/debug"
 
+	"github.com/rotisserie/eris"
 	"go.ideatocode.tech/debug"
 	"go.ideatocode.tech/log"
 	"go.ideatocode.tech/netplus"
@@ -207,7 +208,7 @@ func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *User
 	n, err := c.Read(b1)
 	if n != 1 || err != nil || b1[0] != 0x05 {
 		c.Close()
-		return nil, "", fmt.Errorf("[Socks](%s) e: socksver, %s", ss.Addr, err)
+		return nil, "", eris.Wrapf(err, "socks5 perform handshake: invalid socks ver: %d", b1[0])
 	}
 
 	// read num methods
@@ -215,7 +216,7 @@ func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *User
 	n, err = c.Read(b1)
 	if n != 1 || err != nil {
 		c.Close()
-		return nil, "", fmt.Errorf("[Socks](%s) e: numm n, %s", ss.Addr, err)
+		return nil, "", eris.Wrapf(err, "socks5 perform handshake: invalid authentication num methods: %x", b1)
 	}
 
 	num := int(b1[0])
@@ -226,7 +227,7 @@ func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *User
 	// error reading num methods
 	if err != nil || n != num {
 
-		return nil, "", fmt.Errorf("[Socks](%s) e: numm, %s", ss.Addr, err)
+		return nil, "", eris.Wrapf(err, "socks5 perform handshake: failed reading num methods: %x", methodsb)
 	}
 
 	methods := fmt.Sprintf("%d methods:", num)
@@ -243,11 +244,14 @@ func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *User
 		// auth pass
 		c.Write([]byte{0x05, 0x02})
 		uinfo, err = getSocksPassAuth(c)
+
 		if uinfo == nil || err != nil {
 			c.Write([]byte{0x01, 0xff})
 			c.Close()
-			return nil, "", fmt.Errorf("[Socks](%s) e: Failed to get authentication: %s", ss.Addr, err)
+			return nil, "", eris.Wrapf(err, "socks5 perform handshake: could not read user/pass")
 		}
+	} else {
+		uinfo = &UserPass{}
 	}
 
 	ip = strings.Split(c.RemoteAddr().String(), ":")[0]
@@ -256,39 +260,56 @@ func (ss *Server) performHandshake(ctx context.Context, c net.Conn) (uinfo *User
 		if !allowed {
 			c.Write([]byte{0x05, 0xff})
 			c.Close()
-			return uinfo, ip, fmt.Errorf("[Socks](%s) e: refused by authhandler: %s", ss.Addr, err)
+			return uinfo, ip, eris.Wrapf(err, "socks5 perform handshake: refused by authhandler")
 		}
 	}
+
 	// write success
-	c.Write([]byte{0x01, 0x00})
+	if hasMethod {
+		// send user/pass specific ok signal
+		c.Write([]byte{0x01, 0x00})
+	} else {
+		// send NO AUTHENTICATION REQUIRED
+		c.Write([]byte{0x05, 0x00})
+	}
 	return uinfo, ip, nil
 }
 
 func getSocksPassAuth(c net.Conn) (*UserPass, error) {
 
-	h1 := make([]byte, 2)
-	n, err := c.Read(h1)
-	if n != 2 || err != nil {
-		return nil, err
+	ver := make([]byte, 1)
+	n, err := c.Read(ver)
+	if n != 1 || err != nil {
+		return nil, eris.Wrap(err, "socks5 user/pass auth, reading VER failed")
 	}
 
-	uname := make([]byte, h1[1])
+	if ver[0] != 0x01 {
+		return nil, eris.Wrapf(err, "socks5 user/pass auth, invalid VER %d", ver[0])
+	}
+
+	h1 := make([]byte, 1)
+	n, err = c.Read(h1)
+	if n != 1 || err != nil {
+		return nil, eris.Wrap(err, "socks5 user/pass auth, reading ULEN failed")
+	}
+
+	uname := make([]byte, h1[0])
 	n, err = c.Read(uname)
 
-	if n != int(h1[1]) || err != nil {
-		return nil, err
+	if n != int(h1[0]) || err != nil {
+		return nil, eris.Wrap(err, "socks5 user/pass auth, reading UNAME failed")
 	}
 	plen := make([]byte, 1)
 	n, err = c.Read(plen)
 
 	if n != 1 || err != nil {
-		return nil, err
+		return nil, eris.Wrap(err, "socks5 user/pass auth, reading PLEN failed")
 	}
 	passwd := make([]byte, plen[0])
 	n, err = c.Read(passwd)
 
 	if n != int(plen[0]) || err != nil {
-		return nil, err
+		return nil, eris.Wrap(err, "socks5 user/pass auth, reading PASSWD failed")
 	}
 	return &UserPass{
 		User: string(uname),
