@@ -127,7 +127,7 @@ func (c *Client) performHandshake(conn net.Conn) (err error) {
 func (c *Client) performAuth(conn net.Conn) error {
 	h := &AuthHeader{
 		Bin: authBinHeader{
-			ver:    0x05,
+			ver:    0x01,
 			ulen:   byte(len(c.Auth.User)),
 			uname:  []byte(c.Auth.User),
 			plen:   byte(len(c.Auth.Pass)),
