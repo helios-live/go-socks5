@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.ideatocode.tech/log"
 	"go.ideatocode.tech/netplus"
-	"go.ideatocode.tech/socks5"
+	"go.ideatocode.tech/socks5/v2"
 	gproxy "golang.org/x/net/proxy"
 )
 
