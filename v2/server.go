@@ -118,7 +118,6 @@ func (ss *Server) Listen(addr string) (*netplus.CounterListener, error) {
 func (ss *Server) Serve(list net.Listener) error {
 
 	ss.listener = list
-	ss.Logger.Debug("[Socks]Listening on", list.Addr())
 
 	for {
 		rw, err := list.Accept()
@@ -126,11 +125,11 @@ func (ss *Server) Serve(list net.Listener) error {
 		if err != nil {
 			return err
 		}
-		ss.Logger.Debug("[Socks]New connection from", rw.RemoteAddr(), "to", ss.listener.Addr())
 
 		sc := socksConn{rw, false}
 		cc := &netplus.CounterConn{Conn: sc, Upstream: 0, Downstream: 0}
 		if ss.DumpData {
+			ss.Logger.Debug("[Socks]New connection from", rw.RemoteAddr(), "to", ss.listener.Addr())
 			cp := &debug.PrinterConn{Conn: sc}
 			cc = &netplus.CounterConn{Conn: cp, Upstream: 0, Downstream: 0}
 		}
@@ -161,13 +160,17 @@ func (ss *Server) serve(ctx context.Context, c net.Conn) {
 
 	uinfo, ip, err := ss.performHandshake(ctx, c)
 	if err != nil {
-		ss.Logger.Debug("[Socks] handshake error:", err)
+		if ss.DumpData {
+			ss.Logger.Debug("[Socks] handshake error:", err)
+		}
 		return
 	}
 
 	rh, err := readReqHeader(c, true)
 	if rh == nil || err != nil {
-		ss.Logger.Debug(fmt.Sprintf("[Socks](%s) e: Failed to ReadReqHeader, %s", ss.Addr, err))
+		if ss.DumpData {
+			ss.Logger.Debug(fmt.Sprintf("[Socks](%s) e: Failed to ReadReqHeader, %s", ss.Addr, err))
+		}
 		c.Close()
 		return
 	}
@@ -190,7 +193,9 @@ func (ss *Server) serve(ctx context.Context, c net.Conn) {
 		defer cancel()
 
 		if err != nil {
-			ss.Logger.Debug(fmt.Sprintf("[Socks](%s) e: Failed to Dial %s, %s", ss.Addr, addr, err))
+			if ss.DumpData {
+				ss.Logger.Debug(fmt.Sprintf("[Socks](%s) e: Failed to Dial %s, %s", ss.Addr, addr, err))
+			}
 			c.Write(statusHostUnreachable)
 			return
 		}
