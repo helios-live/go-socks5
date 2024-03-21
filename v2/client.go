@@ -1,6 +1,7 @@
 package socks5 // import go.ideatocode.tech/socks5
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -56,8 +57,25 @@ func (c *Client) Open(addr string) (cc *SocksClientConn, err error) {
 	return &SocksClientConn{Conn: conn}, err
 }
 
-// Connect sends the connection request
-func (cc *SocksClientConn) Connect(addr string, port int) error {
+func (cc *SocksClientConn) ConnectContext(ctx context.Context, addr string, port int) error {
+
+	var deadline time.Time = time.Now().Add(60 * time.Second)
+	if d, ok := ctx.Deadline(); ok {
+		deadline = d
+	}
+
+	err := cc.ConnectDeadline(addr, port, deadline)
+	if err != nil {
+		cc.Close()
+		return err
+	}
+	return nil
+}
+
+// ConnectDeadline sends the connection request
+func (cc *SocksClientConn) ConnectDeadline(addr string, port int, deadline time.Time) error {
+	cc.Conn.SetDeadline(deadline)
+	defer cc.Conn.SetDeadline(time.Time{})
 	var atyp byte
 	var addrb []byte
 	ip := net.ParseIP(addr)
