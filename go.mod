@@ -1,4 +1,4 @@
-module go.ideatocode.tech/socks5
+module github.com/helios-live/go-socks5/v3
 
 go 1.17
 

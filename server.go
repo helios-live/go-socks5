@@ -125,13 +125,11 @@ func (ss *Server) Serve(list net.Listener) error {
 		if err != nil {
 			return err
 		}
-		if ss.DumpData {
-			ss.Logger.Debug("[Socks]New connection from", rw.RemoteAddr(), "to", ss.listener.Addr())
-		}
 
 		sc := socksConn{rw, false}
 		cc := &netplus.CounterConn{Conn: sc, Upstream: 0, Downstream: 0}
 		if ss.DumpData {
+			ss.Logger.Debug("[Socks]New connection from", rw.RemoteAddr(), "to", ss.listener.Addr())
 			cp := &debug.PrinterConn{Conn: sc}
 			cc = &netplus.CounterConn{Conn: cp, Upstream: 0, Downstream: 0}
 		}

@@ -57,7 +57,7 @@ func (c *Client) Open(addr string) (cc *SocksClientConn, err error) {
 	return &SocksClientConn{Conn: conn}, err
 }
 
-func (cc *SocksClientConn) ConnextContext(ctx context.Context, addr string, port int) error {
+func (cc *SocksClientConn) ConnectContext(ctx context.Context, addr string, port int) error {
 
 	var deadline time.Time = time.Now().Add(60 * time.Second)
 	if d, ok := ctx.Deadline(); ok {
