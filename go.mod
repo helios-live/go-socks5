@@ -4,9 +4,9 @@ go 1.17
 
 require (
 	github.com/stretchr/testify v1.7.1
-	go.ideatocode.tech/debug v1.0.3
-	go.ideatocode.tech/log v1.0.4
-	go.ideatocode.tech/netplus v1.0.0
+	github.com/helios-live/go-debugging-niceties/v2 v2.0.1
+	github.com/helios-live/go-netplus/v2 v2.0.1
+	github.com/helios-live/go-log/v2 v2.0.0
 	golang.org/x/net v0.0.0-20220325170049-de3da57026de
 )
 
