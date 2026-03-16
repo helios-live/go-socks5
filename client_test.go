@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.ideatocode.tech/log"
-	"go.ideatocode.tech/netplus"
-	"go.ideatocode.tech/socks5/v2"
+	
+	"github.com/helios-live/go-log/v2"
+	"github.com/helios-live/go-netplus/v2"
+	"github.com/helios-live/go-socks5/v3"
 )
 
 func TestClientCanDoSocksRequests(t *testing.T) {
