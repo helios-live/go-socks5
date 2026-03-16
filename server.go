@@ -12,9 +12,6 @@ import (
 	dbg "runtime/debug"
 
 	"github.com/rotisserie/eris"
-	"go.ideatocode.tech/debug"
-	"go.ideatocode.tech/log"
-	"go.ideatocode.tech/netplus"
 	
 	"github.com/helios-live/go-debugging-niceties/v2"
 	"github.com/helios-live/go-netplus/v2"
