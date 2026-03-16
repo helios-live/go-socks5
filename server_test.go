@@ -11,9 +11,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.ideatocode.tech/log"
-	"go.ideatocode.tech/netplus"
-	"go.ideatocode.tech/socks5/v2"
+	
+	"github.com/helios-live/go-socks5/v3"
+	"github.com/helios-live/go-netplus/v2"
+	"github.com/helios-live/go-log/v2"
 )
 
 var withOutput = flag.Bool("withOutput", false, "When set to true some tests will turn on output")
